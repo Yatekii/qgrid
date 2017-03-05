@@ -138,7 +138,7 @@ def set_grid_option(optname, optvalue):
     defaults.grid_options[optname] = optvalue
 
 
-def show_grid(data_frame, show_toolbar=None, remote_js=None, precision=None, grid_options=None, export_mode=None):
+def show_grid(data_frame, show_toolbar=None, remote_js=None, precision=None, grid_options=None, export_mode=None, update_handler=None,remove_handler=None,add_handler=None):
     """
     Main entry point for rendering DataFrames as SlickGrids.
 
@@ -215,7 +215,8 @@ def show_grid(data_frame, show_toolbar=None, remote_js=None, precision=None, gri
     # create a visualization for the dataframe
     grid = QGridWidget(df=data_frame, precision=precision,
                        grid_options=grid_options,
-                       remote_js=remote_js)
+                       remote_js=remote_js, update_handler=update_handler,
+                       remove_handler=remove_handler, add_handler=add_handler)
 
     if show_toolbar:
         add_row = widgets.Button(description="Add Row")
@@ -345,6 +346,8 @@ class QGridWidget(widgets.DOMWidget):
         msg['type'] = 'add_row'
         self._dirty = True
         self.send(msg)
+        if self.add_handler is not None:
+            self.add_handler()
 
     def remove_row(self, value=None):
         """Remove the current row from the table"""
@@ -353,6 +356,8 @@ class QGridWidget(widgets.DOMWidget):
             display(Javascript('alert("%s")' % msg))
             return
         self.send({'type': 'remove_row'})
+        if self.remove_handler is not None:
+            self.remove_handler()
 
     def _handle_qgrid_msg(self, widget, content, buffers=None):
         """Handle incoming messages from the QGridView"""
@@ -367,6 +372,8 @@ class QGridWidget(widgets.DOMWidget):
                 self.df.set_value(self.df.index[content['row']],
                                   content['column'], content['value'])
                 self._dirty = True
+                if self.update_handler is not None:
+                    self.update_handler(content['row'], content['column'], content['value'])
             except ValueError:
                 pass
 
